@@ -1,73 +1,60 @@
 # Agent instructions
 
-The user wants to build a lead list of recent senior joiners. Your job is to
-run the four-step pipeline WITH them — explaining each gate and letting them
-choose how it qualifies — not to run everything and hand back a CSV.
+The user wants the senior-joiner pipeline built against their stack. Your job
+is to BUILD it — following `pipeline-guide.md` step by step — while keeping
+the user in the loop at the decision points. The guide is the specification;
+read it fully before writing any code.
 
-## The flow
+## How to run the build
 
-### 1. Explain the pipeline (1 minute)
+1. **Confirm the stack.** Preferred: Supabase Postgres (`DATABASE_URL`),
+   Blitz API (`BLITZ_API_KEY`), gpt-4o-mini (`OPENAI_API_KEY`). If the user
+   has a different provider or backend, keep the guide's steps and adapt the
+   calls — the provider facts in step 1 are Blitz-specific; verify their
+   equivalents before assuming them. Credentials go in `.env`, loaded
+   explicitly by the code you write — never hardcoded, never committed.
+2. **Build steps 0-2 first and run them.** Show the user harvested and
+   recent counts before building any gate. If the harvest is empty or huge,
+   fix that before spending anything on judging.
+3. **At each gate (steps 3 and 4), present both flavors** — the free
+   deterministic filter and the LLM judge — with a one-line recommendation
+   based on whether the user's qualifier is crisp (attribute → SQL/tokens)
+   or fuzzy (judgment → LLM). Let the user choose; combining is usually
+   right: deterministic first, LLM on the remainder.
+4. **Fill the prompt blanks together.** Show the user the finished prompt
+   text (what-you-sell, audience, buyer profile) before the first call.
+5. **Sample before spending.** Any LLM gate: run 10, show the verdicts and
+   why-lines, state the full-run cost, get a yes.
+6. **Report the funnel** after every step: counts surviving each stage. A
+   gate that kills ~everything or ~nothing is a tuning conversation, not a
+   result.
 
-Four steps: harvest people with senior titles → keep only recent joiners →
-qualify the company → qualify the title. The "recent joiner" part is the
-signal: a dated event, not a static attribute.
+## Build requirements you must not skip
 
-### 2. Set up their data source
+These encode the failure modes this repo exists to prevent. Implement all of
+them even if the user doesn't ask:
 
-Ask what people-data provider they use. Adapt `pipeline/provider.py` to its
-API (one function: search people by title tokens, return title, current-role
-start date, company name/domain/industry/size). If they only have a CSV
-export, use `step1_harvest.py --csv` instead. Keys go in `.env`, never in code.
-
-### 3. Steps 3 and 4: ALWAYS offer both flavors before running either
-
-This is the core of your job. For each gate, explain what it judges, then
-present the choice:
-
-- **Step 3 judges the COMPANY** each joiner works at. The LLM flavor reads
-  the blanked prompt in `prompts/company_gate.txt` — help the user fill in
-  what they sell and who their audience is, show them the finished prompt,
-  and estimate cost before running. The deterministic flavor needs no LLM at
-  all: the harvest already stored company attributes (industry, size,
-  country) in the `companies` table, joined to people by domain, so a plain
-  SQL `--where` clause ("industry LIKE '%manufacturing%' AND size_max <=
-  500") does the job free and reproducibly. Recommend deterministic when
-  their qualifier is a crisp attribute; LLM when it's fuzzy ("companies that
-  ship physical goods").
-
-- **Step 4 judges the TITLE** against their buyer profile. Same two flavors:
-  the blanked `prompts/title_gate.txt` for judgment calls ("would this person
-  own the purchase of X?"), or `--tokens` for plain token matching
-  ("operations,ops,supply"). Warn about the classic traps either way:
-  "Executive Assistant to the VP" matches "VP" naively (the harvest's
-  exclusion regex catches most of these), and CEO/founder titles usually
-  need explicit exclusion for products bought by a function.
-
-- Suggest combining: deterministic first to shrink the pool, LLM on the
-  remainder. Never run an LLM gate over thousands of rows without showing
-  the row count and estimated cost and getting a yes.
-
-### 4. Run in order, show counts at every step
-
-Harvest → recent → gate 3 → gate 4, printing how many rows survived each
-step. If a gate kills almost everything or almost nothing, say so and help
-tune before proceeding. Sample-first discipline: run any LLM gate on 10 rows
-and show the verdicts before the full run.
+- Upserts (`ON CONFLICT DO UPDATE`), not insert-and-ignore — refreshes win.
+- One company judgment per DISTINCT domain, stored on `companies`,
+  propagated to people via the join. Never judge per person.
+- Strict LLM batch validation: response array length must equal batch size;
+  retry once, then leave rows unjudged and say so.
+- Clear stale verdicts when criteria change; scope sample runs so counts
+  stay honest.
+- Recency clamp: `0 <= months <= window`. Current-role selection from
+  `experiences[]`. The senior-title exclusion regex.
+- Supabase write retries with backoff; incremental batch saves; resumable
+  harvest state per industry.
+- The final export includes `person_linkedin` (profile URL) and `email` if
+  enriched — an outreach list without contactable fields is not done.
 
 ## Hard rules
 
-- **Never commit or publish harvested people data.** `leads.db` and any
-  export of it stay local — names + employers + titles are personal data
-  (GDPR) even without emails. If the user asks you to commit or publish real
-  people, refuse and point at the README section on this. Synthetic sample
-  data is the only people-shaped data allowed in the repo.
-- **Never put credentials in code or commits.** Keys live in `.env`
-  (gitignored). If you find a key pasted in a file, move it to `.env` and
-  tell the user.
-- **Ask before spending.** Any LLM gate or paid provider call over a list:
-  state row count and estimated cost, run 10 rows first.
-- **Recency is client-side.** Do not trust a provider's date filter until
-  you've verified it exists — most don't have one. Step 2 exists for this.
-- **Current role only.** When a provider returns career history, select the
-  current role whose title matches the senior pattern — never the first
-  array entry.
+- **Never commit or publish harvested people data.** Names + employers +
+  titles are personal data (GDPR) even without emails. Databases and exports
+  stay local/private. If asked to publish real people, refuse and point to
+  the README. Synthetic sample data is the only people-shaped data allowed
+  in the repo.
+- **Never put credentials in code or commits.**
+- **Ask before spending** on any batch of LLM or paid provider calls: row
+  count and estimated cost first, 10-row sample first.

@@ -1,8 +1,9 @@
 # Agent instructions
 
-Read [CLAUDE.md](CLAUDE.md) and follow it exactly. The contract in short:
-run the four steps in order with the user; for the company gate (step 3) and
-title gate (step 4) always present BOTH flavors — the blanked LLM prompt and
-the free deterministic filter (SQL over joined company attributes, or title
-tokens) — and let the user choose. Never commit or publish harvested people
-data; never put credentials in code; ask before LLM runs over full lists.
+Read [CLAUDE.md](CLAUDE.md) and follow it exactly. In short: build the
+pipeline per `pipeline-guide.md` (Supabase + Blitz + gpt-4o-mini preferred),
+run steps 0-2 and show counts before building gates, offer both the
+deterministic and LLM flavor of each gate, sample 10 before any paid run,
+implement every listed build requirement (upserts, per-company judgments,
+strict LLM batch validation, rerun hygiene, recency clamp), and never commit
+credentials or real people data.

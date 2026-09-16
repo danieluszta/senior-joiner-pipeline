@@ -1,2 +1,0 @@
-# Standard library only — nothing to install for the pipeline itself.
-# Your provider integration in pipeline/provider.py may add its own (e.g. requests).
