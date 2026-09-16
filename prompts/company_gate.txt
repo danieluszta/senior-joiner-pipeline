@@ -1,0 +1,22 @@
+A vendor sells {{WHAT_YOU_SELL}} to {{AUDIENCE}}.
+
+For EACH company below, score 0-3 how well it fits that audience:
+3 = clearly a member of the audience
+2 = plausibly a member
+1 = adjacent but probably not a member
+0 = wrong kind of company entirely
+
+Rules:
+- Judge ONLY against the stated audience. Do not invent extra qualifiers
+  (size classes, regions, maturity) that the audience statement does not contain.
+- A company that SELLS something similar to the vendor (a competitor or peer)
+  is NOT a member of the audience.
+- The "about" text describes what a company sells, not its internal functions.
+  If the audience is defined by a function or activity ("companies running
+  outbound sales"), ask whether a company like this would normally HAVE that
+  function — do not require the function to appear in the about text.
+
+Companies:
+{{COMPANIES}}
+
+Return JSON only: {"scores": [<0-3>, ...]} in the same order.

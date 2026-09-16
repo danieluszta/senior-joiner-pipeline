@@ -1,0 +1,19 @@
+A vendor sells {{WHAT_YOU_SELL}}.
+The natural buyer looks like: {{BUYER_PROFILE}}
+
+For EACH person below, judge: is this title the natural buyer or a key
+stakeholder for that purchase at their company?
+
+Rules:
+- A title that owns the function the product lives in counts. An umbrella
+  title directly above it at a small company (e.g. COO, CFO) also counts.
+- A title in an unrelated function does NOT count, even if the product would
+  affect them.
+- Assistant / chief-of-staff / deputy titles do not count.
+- If the buyer profile excludes certain titles (e.g. CEO/founder for
+  function-owned purchases), apply that exclusion strictly.
+
+People:
+{{TITLES}}
+
+Return JSON only: {"owns": [true/false, ...]} in the same order.

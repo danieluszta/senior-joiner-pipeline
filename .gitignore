@@ -1,0 +1,13 @@
+# Real people data — NEVER commit (personal data under GDPR even without emails)
+leads.db
+leads.db-*
+*.csv
+!data/sample_joiners.csv
+
+# Credentials
+.env
+
+# Python
+__pycache__/
+*.py[oc]
+.venv/
