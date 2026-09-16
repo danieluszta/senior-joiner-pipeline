@@ -33,7 +33,8 @@ concrete and the user saying yes (or tuning, and repeating the checkpoint).
 Do not merge checkpoints, and do not proceed past one without its yes.
 
 - **CP0 — Stack confirmed.** Preferred: Supabase Postgres (`DATABASE_URL`),
-  Blitz API (`BLITZ_API_KEY`), gpt-4o-mini (`OPENAI_API_KEY`); adapt the
+  Blitz API (`BLITZ_API_KEY`), the judge model (`OPENAI_API_KEY`,
+  `JUDGE_MODEL` default gpt-5-nano); adapt the
   guide's calls if the user's stack differs (the provider facts in step 1
   are Blitz-specific — verify equivalents, don't assume). Prove
   connectivity: one provider call, one DB write. Credentials in `.env`,
@@ -83,8 +84,13 @@ them even if the user doesn't ask:
   `experiences[]`. The senior-title exclusion regex.
 - Supabase write retries with backoff; incremental batch saves; resumable
   harvest state per industry.
-- The final export includes `person_linkedin` (profile URL) and `email` if
-  enriched — an outreach list without contactable fields is not done.
+- Every export includes `person_linkedin` (profile URL) — the bundled
+  runner's output is LinkedIn-contactable by design and contains no email
+  stage. When the user needs emails, implement step 5 from the guide before
+  calling the list done; do not present the runner's CSV as email-ready.
+- The bundled runner is the LLM-assisted happy path (`OPENAI_API_KEY`
+  required). The guide's deterministic gate variants are yours to build or
+  run when the user prefers them; offering both flavors at CP3 still applies.
 
 ## Hard rules
 

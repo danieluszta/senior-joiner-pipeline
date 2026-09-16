@@ -15,6 +15,8 @@ npx tsx scripts/run.ts --config=lane.example.titles.json --limit=25   # pilot fi
 npx tsx scripts/run.ts --config=lane.example.titles.json              # full run
 ```
 
+Two scope notes on the bundled runner. First, it produces a **LinkedIn-contactable** list (profile URL per lead); email enrichment is deliberately not in it — when you need emails, your agent adds step 5 from the guide. Second, the runner implements the **recommended LLM-assisted path** and requires `OPENAI_API_KEY`; the guide additionally specifies free deterministic variants of both gates (SQL over company attributes, title tokens) that the agent can build or use when the qualifier is crisp.
+
 Run mechanics are GEX-grade: `state.json` resumability with a config-hash guard (a changed lane config invalidates judged stages instead of silently mixing verdicts), a run lock, exponential backoff on 429/5xx, strict batch validation on every judge call (10 in must mean 10 verdicts out, retried once, then reported unjudged — never silently zipped short), and an append-only WAL where every verdict carries the judge-prompt SHA. Output syncs to Supabase/Postgres when `DATABASE_URL` is set; otherwise the run directory's artifacts are the output. For anything beyond these two modes, hand the guide to your agent and say *"build this against my stack"*.
 
 The agent runs it as a **pilot first, autonomy second**: it will tell you up front that a small batch runs together with you — you approve the harvest sample, the gate criteria, the pilot verdicts, and the first finished leads at fixed checkpoints (CP0–CP7 in [`CLAUDE.md`](CLAUDE.md)) — and only then does it run the full pipeline on its own, with the cost stated and approved.
@@ -23,7 +25,7 @@ The agent runs it as a **pilot first, autonomy second**: it will tell you up fro
 
 - **Supabase (Postgres)** as the backend — the schema, upsert rules, and connection-retry requirements are in the guide. Any Postgres works.
 - **Blitz API** as the lead provider — the guide encodes its real behavior: no input filter on job start date (recency is client-side), whole-career `experiences[]` (current-role selection is mandatory), seniority tags that lose ~30% of real buyers (title tokens are the filter), 50-entry filter caps.
-- **gpt-4o-mini** as the judge — the cheapest model that reliably scores company and title fit in batches of 10. Swap in any equivalent.
+- **gpt-5-nano** as the judge (env `JUDGE_MODEL` swaps it) — the cheapest model that reliably scores company and title fit in batches of 10.
 
 Different provider or backend? The guide's steps still apply; the agent adapts the calls.
 
@@ -34,7 +36,7 @@ Different provider or backend? The guide's steps still apply; the agent adapts t
 1. download seniors → Blitz people search by senior-title tokens, per industry, current role only
 2. recency filter   → months-in-role regex, client-side, 0 ≤ months ≤ window
 3. company gate     → join person→company, dedupe to distinct domains, pull about text,
-                      judge ONCE per company (4o-mini, 10/batch) — or free SQL on industry/size
+                      judge ONCE per company (JUDGE_MODEL, 10/batch) — or free SQL on industry/size
 4. title gate       → free token prefilter, then strict buyer-ownership judge — or tokens only
 5. emails (optional)→ enrich before further spend; export carries profile URL + email
 ```

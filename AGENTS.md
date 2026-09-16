@@ -1,7 +1,8 @@
 # Agent instructions
 
 Read [CLAUDE.md](CLAUDE.md) and follow it exactly. In short: build the
-pipeline per `pipeline-guide.md` (Supabase + Blitz + gpt-4o-mini preferred),
+pipeline per `pipeline-guide.md` (Supabase + Blitz + the JUDGE_MODEL judge,
+default gpt-5-nano),
 and run it under the pilot contract — tell the user up front that a small
 pilot batch runs together first, then walk checkpoints CP0-CP7: stack
 connectivity, harvest sample, recency window, gate criteria (both flavors

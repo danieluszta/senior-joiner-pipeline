@@ -1,6 +1,6 @@
 # The pipeline guide
 
-Step-by-step instructions for an agent to **build** the senior-joiner pipeline against the preferred stack: **Supabase (Postgres) as the backend, Blitz API as the lead provider, gpt-4o-mini as the judge** (cheapest model that judges company/title fit reliably; swap equivalents freely). Every step says what to build, why it exists, and the exact prompt or pattern to use.
+Step-by-step instructions for an agent to **build** the senior-joiner pipeline against the preferred stack: **Supabase (Postgres) as the backend, Blitz API as the lead provider, and the configured judge model** — set via the `JUDGE_MODEL` env var, **default `gpt-5-nano`**, the cheapest model that judges company/title fit reliably; every "the judge" below means this model. Every step says what to build, why it exists, and the exact prompt or pattern to use.
 
 Credentials come from the environment: `DATABASE_URL`, `BLITZ_API_KEY`, `OPENAI_API_KEY` (see `env.example`). Make loading `.env` an explicit part of whatever you build — don't assume the shell did it.
 
@@ -132,7 +132,7 @@ Recommend this whenever the qualifier is an attribute (industry, size, country).
 
 1. **Select DISTINCT company domains** from recent joiners that have no verdict yet (`company_pass IS NULL`). Never iterate over people here — five joiners at one company must produce ONE judgment, not five potentially contradictory ones. The verdict is written to `companies` and reaches people through the join.
 2. For each domain missing `about`, pull it via Blitz company enrichment (`/v2/enrichment/company-enrich`) and store it. The about text is the judge's main evidence.
-3. Batch 10 companies per call to **gpt-4o-mini** (temperature 0) with the prompt in [`prompts/company_gate.txt`](prompts/company_gate.txt) — blanks: `{{WHAT_YOU_SELL}}`, `{{AUDIENCE}}`, `{{COMPANIES}}` (numbered lines: name, domain, industry, size, about[:200-400]).
+3. Batch 10 companies per call to **the configured judge** (deterministic settings: `reasoning_effort: minimal` on reasoning models, temperature 0 otherwise — see `scripts/nano.ts`) with the prompt in [`prompts/company_gate.txt`](prompts/company_gate.txt) — blanks: `{{WHAT_YOU_SELL}}`, `{{AUDIENCE}}`, `{{COMPANIES}}` (numbered lines: name, domain, industry, size, about[:200-400]).
 4. **Validate the output length strictly.** If `scores` doesn't have exactly as many entries as the batch, retry the batch once; if it fails again, leave those rows unjudged (`NULL`) and report the count — never zip short and claim the batch was judged.
 5. Write `company_pass = score >= 2`, `company_why = 'llm_score:N'`, `judged_at = now()`.
 
@@ -156,11 +156,13 @@ Return JSON: {"functions": ["..."], "extra_tokens": ["..."]}
 
 Each function key expands to a token list (operations → operations, ops, plant, production, supply chain, logistics, quality, …; build the map once). Titles containing any token pass the prefilter. If the prefilter keeps nothing, pass everything through — a bad token set must not silently zero the pipeline.
 
-**LLM judge on the survivors** (or as the sole gate if the user prefers): batch 10 per gpt-4o-mini call with [`prompts/title_gate.txt`](prompts/title_gate.txt) — blanks: `{{WHAT_YOU_SELL}}`, `{{BUYER_PROFILE}}`, `{{TITLES}}`. Same strict output-length validation and rerun hygiene as step 3.
+**LLM judge on the survivors** (or as the sole gate if the user prefers): batch 10 per judge call with [`prompts/title_gate.txt`](prompts/title_gate.txt) — blanks: `{{WHAT_YOU_SELL}}`, `{{BUYER_PROFILE}}`, `{{TITLES}}`. Same strict output-length validation and rerun hygiene as step 3.
 
 Hard-exclude before the LLM (regex, free): `\bfounder\b|\bceo\b|\bowner\b|(?<!vice )\bpresident\b` for products bought by a function — a CEO "pass" from the model is usually flattery, and these titles reply worst to function-level outreach. Make the exclusion a user choice, default on.
 
 ## Step 5 (optional) — Emails, and the export
+
+*The bundled runner (`scripts/run.ts`) stops before this step — its export is LinkedIn-contactable. Build this step when the user needs emails.*
 
 If the user's Blitz plan includes email enrichment, enrich **before** any further paid judging — only shippable leads deserve model spend. Expect roughly 10-25% hit rate; enrich down the freshness-sorted list until enough shippable leads exist.
 
