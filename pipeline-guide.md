@@ -22,6 +22,9 @@ CREATE TABLE IF NOT EXISTS joiners (
   company_linkedin text,
   email            text,                 -- step 5, optional
   recent           boolean,
+  role_change_type text,                 -- step 2b: 'new_hire' | 'promotion' | 'unknown'
+  prior_title      text,
+  prior_company    text,
   title_pass       boolean, title_why text,
   harvested_at     timestamptz DEFAULT now(),
   updated_at       timestamptz DEFAULT now()
@@ -95,6 +98,21 @@ Build requirements:
 - Missing/unparseable dates are *excluded and counted* — report them, don't silently keep or drop.
 - Flag rows (`recent = true/false`), never delete — rerunning with a different window is then just a re-flag.
 
+## Step 2b — New hire or promotion (pure code, no LLM)
+
+**What:** classify every recent joiner as `new_hire` or `promotion`. This matters more than it looks: in one graded new-in-role batch (Growth Engine X's playbook), **8 of 10** "recent joiners" turned out to be internal promotions — and the outreach line differs. "Welcome aboard" copy sent to someone in year six at the company is a credibility kill.
+
+The judgment is deterministic — the career history already contains the answer, so no model decides it:
+
+1. Pull the person's full career history (Blitz `/v2/enrichment/person` returns the experiences list with company, title, start date). If your harvest already stored the full `experiences[]`, reuse it — no second call.
+2. Collect their experiences at the matched company. Companies match by **LinkedIn slug**, with company-name equality as the fallback.
+3. **Promotion** if either: they have **2 or more roles** listed at that company, or their **earliest start date there is older than the current title's start** (computed from the stored `months`, with a **2-month tolerance** for harvest lag).
+4. **New hire** if the current role is their only, recent experience there. **Unknown** if the history shows no matching company at all (rare — 0 of 18 in the test batch).
+
+Store `role_change_type`, plus `prior_title` and `prior_company` from the most recent earlier experience — they feed personalization later.
+
+Copy hazard to carry into any messaging step: a promotion's *direction* is unprovable from history (2+ roles proves an internal move, not a step up). Say "stepped into the seat", never "moved up" or "got promoted"; and never say a promoted person "joined" the company.
+
 ## Step 3 — Company gate (join, enrich, judge ONCE per company)
 
 **What:** decide whether each *company* employing a recent joiner fits the user's audience.
@@ -149,7 +167,8 @@ If the user's Blitz plan includes email enrichment, enrich **before** any furthe
 The final export must carry the outreach fields, not just the qualification story:
 
 ```
-full_name, title, months, person_linkedin, email, company_name, company_domain, company_why, title_why
+full_name, title, months, role_change_type, prior_title, person_linkedin, email,
+company_name, company_domain, company_why, title_why
 ```
 
 `person_linkedin` is the profile URL — it is both the primary key and an outreach field; never drop it from the export.
@@ -160,4 +179,4 @@ full_name, title, months, person_linkedin, email, company_name, company_domain, 
 
 ## Order and reporting
 
-Run 1 → 2 → 3 → 4 → (5), printing surviving counts at every step, e.g. `4,812 harvested → 1,102 recent → 214 companies pass → 371 people at passing companies → 88 titles pass → 61 with email`. If any gate kills ~everything or ~nothing, stop and tune with the user before continuing.
+Run 1 → 2 → 2b → 3 → 4 → (5), printing surviving counts at every step, e.g. `4,812 harvested → 1,102 recent → 214 companies pass → 371 people at passing companies → 88 titles pass → 61 with email`. If any gate kills ~everything or ~nothing, stop and tune with the user before continuing.
