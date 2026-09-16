@@ -4,6 +4,8 @@ An **instruction set for your coding agent** to build a lead pipeline around one
 
 This repo contains no finished pipeline code on purpose. Enrichment code is trivial for an agent to write; what's hard to get right is the **flow, the provider quirks, the judging prompts, and the failure modes**. That's what this repo encodes. Open it in Claude Code (or any coding agent), say *"build this against my stack"*, and the agent follows [`pipeline-guide.md`](pipeline-guide.md).
 
+The agent runs it as a **pilot first, autonomy second**: it will tell you up front that a small batch runs together with you — you approve the harvest sample, the gate criteria, the pilot verdicts, and the first finished leads at fixed checkpoints (CP0–CP7 in [`CLAUDE.md`](CLAUDE.md)) — and only then does it run the full pipeline on its own, with the cost stated and approved.
+
 ## The stack it targets
 
 - **Supabase (Postgres)** as the backend — the schema, upsert rules, and connection-retry requirements are in the guide. Any Postgres works.

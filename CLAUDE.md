@@ -5,29 +5,57 @@ is to BUILD it — following `pipeline-guide.md` step by step — while keeping
 the user in the loop at the decision points. The guide is the specification;
 read it fully before writing any code.
 
-## How to run the build
+## The pilot contract — say this to the user up front
 
-1. **Confirm the stack.** Preferred: Supabase Postgres (`DATABASE_URL`),
-   Blitz API (`BLITZ_API_KEY`), gpt-4o-mini (`OPENAI_API_KEY`). If the user
-   has a different provider or backend, keep the guide's steps and adapt the
-   calls — the provider facts in step 1 are Blitz-specific; verify their
-   equivalents before assuming them. Credentials go in `.env`, loaded
-   explicitly by the code you write — never hardcoded, never committed.
-2. **Build steps 0-2 first and run them.** Show the user harvested and
-   recent counts before building any gate. If the harvest is empty or huge,
-   fix that before spending anything on judging.
-3. **At each gate (steps 3 and 4), present both flavors** — the free
-   deterministic filter and the LLM judge — with a one-line recommendation
-   based on whether the user's qualifier is crisp (attribute → SQL/tokens)
-   or fuzzy (judgment → LLM). Let the user choose; combining is usually
-   right: deterministic first, LLM on the remainder.
-4. **Fill the prompt blanks together.** Show the user the finished prompt
-   text (what-you-sell, audience, buyer profile) before the first call.
-5. **Sample before spending.** Any LLM gate: run 10, show the verdicts and
-   why-lines, state the full-run cost, get a yes.
-6. **Report the funnel** after every step: counts surviving each stage. A
-   gate that kills ~everything or ~nothing is a tuning conversation, not a
-   result.
+Before building anything, tell the user explicitly how this will go:
+
+> "We'll run a small pilot batch together first — you'll see real harvested
+> rows, real gate verdicts, and the first handful of finished leads at fixed
+> checkpoints, and you approve each one. Only after you've approved the
+> pilot leads do I run the full pipeline on my own."
+
+Then honor it. The full run never starts on your judgment alone.
+
+## The checkpoints
+
+Work through these in order. Each one ends with you showing something
+concrete and the user saying yes (or tuning, and repeating the checkpoint).
+Do not merge checkpoints, and do not proceed past one without its yes.
+
+- **CP0 — Stack confirmed.** Preferred: Supabase Postgres (`DATABASE_URL`),
+  Blitz API (`BLITZ_API_KEY`), gpt-4o-mini (`OPENAI_API_KEY`); adapt the
+  guide's calls if the user's stack differs (the provider facts in step 1
+  are Blitz-specific — verify equivalents, don't assume). Prove
+  connectivity: one provider call, one DB write. Credentials in `.env`,
+  loaded explicitly by your code.
+- **CP1 — Harvest sample approved.** Build steps 0-1, harvest ONE industry
+  (or one small slice). Show ~10 raw rows: do the titles look senior, did
+  the exclusion regex catch the assistant/deputy traps, are domains and
+  start dates populated? User approves the harvest quality.
+- **CP2 — Recency window approved.** Run step 2 on the pilot slice. Show
+  the months distribution and the count inside the proposed window. User
+  confirms the window (default ≤ 9 months).
+- **CP3 — Gate criteria approved.** For each gate, present both flavors
+  (free deterministic filter vs LLM judge) with a one-line recommendation:
+  crisp attribute → SQL/tokens, fuzzy judgment → LLM; combining is usually
+  right. Fill the prompt blanks together and show the user the FINISHED
+  prompt text (or the exact SQL/token list) before anything runs.
+- **CP4 — Company-gate pilot approved.** Run the company gate on ~10
+  distinct pilot companies. Show every verdict with its why-line, including
+  the rejects. User approves or tunes the criteria (tuning = redo CP4).
+- **CP5 — Title-gate pilot approved.** Same, on the pilot survivors: every
+  verdict, both directions. User approves or tunes.
+- **CP6 — First leads approved.** Show the pilot's finished leads —
+  name, title, months, company, profile URL, email if enriched — and ask
+  the question that matters: "Would you actually reach out to these?" A no
+  here means tuning, not proceeding.
+- **CP7 — Full run authorized.** State the full-run numbers: total rows,
+  LLM calls, estimated cost, expected runtime. Get an explicit yes, then
+  run the whole pipeline autonomously, saving incrementally.
+
+After the full run, report the funnel: counts surviving every stage. A gate
+that killed ~everything or ~nothing is a tuning conversation, not a result —
+flag it even though the run is done.
 
 ## Build requirements you must not skip
 
