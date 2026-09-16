@@ -1,0 +1,11 @@
+{
+  "mode": "titles",
+  "what_you_sell": "digital shift-handover software for factory teams",
+  "audience": "manufacturing companies that run shift-based production",
+  "buyer_titles": ["VP Operations", "Head of Operations", "Director of Manufacturing", "Plant Director", "COO"],
+  "country": "US",
+  "employee_ranges": ["11-50", "51-200", "201-500"],
+  "max_months": 9,
+  "title_judge": false,
+  "exclude_top_titles": true
+}

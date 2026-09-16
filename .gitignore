@@ -3,6 +3,11 @@ leads.db
 leads.db-*
 *.csv
 !data/sample_joiners.csv
+runs/
+*.ndjson
+
+# Node
+node_modules/
 
 # Credentials
 .env

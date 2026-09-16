@@ -2,7 +2,20 @@
 
 An **instruction set for your coding agent** to build a lead pipeline around one signal: a company just hired a senior leader. New executives change vendors, build teams, and spend budget in their first months — and "months in role" is a dated, checkable fact, not a static attribute.
 
-This repo contains no finished pipeline code on purpose. Enrichment code is trivial for an agent to write; what's hard to get right is the **flow, the provider quirks, the judging prompts, and the failure modes**. That's what this repo encodes. Open it in Claude Code (or any coding agent), say *"build this against my stack"*, and the agent follows [`pipeline-guide.md`](pipeline-guide.md).
+This repo encodes the **flow, the provider quirks, the judging prompts, and the failure modes** in [`pipeline-guide.md`](pipeline-guide.md) — and ships a working orchestrator for the two standard entry points ([`scripts/`](scripts/), TypeScript, `npx tsx`, no dependencies):
+
+- **`mode: "companies"`** — you already have a verified list of target companies. The pipeline finds recent senior joiners *at those companies* and gates their titles (token prefilter, then a gpt-5-nano ownership judge). No company judging — your list is the verification.
+- **`mode: "titles"`** — no list. You name the titles you sell to; the pipeline pulls those people market-wide, then judges each **distinct** company with gpt-5-nano (one verdict per company, propagated to its people).
+
+Both modes filter to **recent joiners** (months-in-role computed client-side, `0 ≤ months ≤ window`) and classify each joiner **new hire vs promotion** deterministically from career history.
+
+```bash
+cp env.example .env            # BLITZ_API_KEY, OPENAI_API_KEY, optional DATABASE_URL
+npx tsx scripts/run.ts --config=lane.example.titles.json --limit=25   # pilot first
+npx tsx scripts/run.ts --config=lane.example.titles.json              # full run
+```
+
+Run mechanics are GEX-grade: `state.json` resumability with a config-hash guard (a changed lane config invalidates judged stages instead of silently mixing verdicts), a run lock, exponential backoff on 429/5xx, strict batch validation on every judge call (10 in must mean 10 verdicts out, retried once, then reported unjudged — never silently zipped short), and an append-only WAL where every verdict carries the judge-prompt SHA. Output syncs to Supabase/Postgres when `DATABASE_URL` is set; otherwise the run directory's artifacts are the output. For anything beyond these two modes, hand the guide to your agent and say *"build this against my stack"*.
 
 The agent runs it as a **pilot first, autonomy second**: it will tell you up front that a small batch runs together with you — you approve the harvest sample, the gate criteria, the pilot verdicts, and the first finished leads at fixed checkpoints (CP0–CP7 in [`CLAUDE.md`](CLAUDE.md)) — and only then does it run the full pipeline on its own, with the cost stated and approved.
 
@@ -40,6 +53,10 @@ Every LLM gate has a **free deterministic alternative** (SQL over company attrib
 
 | File | What it is |
 |------|------------|
+| [`scripts/run.ts`](scripts/run.ts) | The orchestrator: both modes, staged, resumable (`--config`, `--run-dir`, `--limit`) |
+| [`scripts/blitz.ts`](scripts/blitz.ts) / [`scripts/nano.ts`](scripts/nano.ts) | Blitz client (throttle, backoff) and the gpt-5-nano judge (strict batch validation) |
+| [`scripts/lib.ts`](scripts/lib.ts) / [`scripts/db.ts`](scripts/db.ts) | State/WAL/recency plumbing; optional Postgres sync via psql |
+| [`lane.example.companies.json`](lane.example.companies.json) / [`lane.example.titles.json`](lane.example.titles.json) | Lane configs for the two modes |
 | [`pipeline-guide.md`](pipeline-guide.md) | The build instructions: schema, per-step behavior, provider facts, prompts, failure modes |
 | [`CLAUDE.md`](CLAUDE.md) / [`AGENTS.md`](AGENTS.md) | How the agent should run the build with the user |
 | [`prompts/company_gate.txt`](prompts/company_gate.txt) | Blanked company-judging prompt (score 0–3, batched) |

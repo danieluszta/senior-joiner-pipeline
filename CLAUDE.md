@@ -1,9 +1,19 @@
 # Agent instructions
 
-The user wants the senior-joiner pipeline built against their stack. Your job
-is to BUILD it — following `pipeline-guide.md` step by step — while keeping
-the user in the loop at the decision points. The guide is the specification;
-read it fully before writing any code.
+The user wants the senior-joiner pipeline running against their stack. For
+the two standard entry points, DON'T write code — `scripts/run.ts` already
+implements them (companies mode: verified list in, joiners + title gate out;
+titles mode: buyer titles in, market-wide pull + per-company nano judge).
+Your job is to fill a lane config WITH the user, run pilots, and interpret
+results. Build from `pipeline-guide.md` only when their need falls outside
+the two modes or their stack differs from Blitz + gpt-5-nano — the guide is
+the specification; read it fully before writing any code.
+
+Mapping to the checkpoints below: CP1-CP6 are `--limit=25` pilot runs of
+`scripts/run.ts` into a scratch `--run-dir`; CP7 is the full run without
+`--limit`. The run dir's `qualified.csv` and `verdicts.wal.ndjson` are what
+you show the user at each checkpoint. A changed lane config invalidates
+judged stages automatically (config-hash guard) — never work around it.
 
 ## The pilot contract — say this to the user up front
 

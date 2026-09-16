@@ -1,0 +1,8 @@
+{
+  "mode": "companies",
+  "what_you_sell": "digital shift-handover software for factory teams",
+  "buyer_profile": "the leader who owns plant operations or production, or an umbrella title above it at a small company (COO)",
+  "domains_file": "my-target-companies.csv",
+  "max_months": 9,
+  "exclude_top_titles": true
+}
