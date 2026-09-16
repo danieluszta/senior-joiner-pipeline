@@ -19,7 +19,7 @@ Two scope notes on the bundled runner. First, it produces a **LinkedIn-contactab
 
 Run mechanics are GEX-grade: `state.json` resumability with a config-hash guard (a changed lane config invalidates judged stages instead of silently mixing verdicts), a run lock, exponential backoff on 429/5xx, strict batch validation on every judge call (10 in must mean 10 verdicts out, retried once, then reported unjudged — never silently zipped short), and an append-only WAL where every verdict carries the judge-prompt SHA. Output syncs to Supabase/Postgres when `DATABASE_URL` is set; otherwise the run directory's artifacts are the output. For anything beyond these two modes, hand the guide to your agent and say *"build this against my stack"*.
 
-The agent runs it as a **pilot first, autonomy second**: it will tell you up front that a small batch runs together with you — you approve the harvest sample, the gate criteria, the pilot verdicts, and the first finished leads at fixed checkpoints (CP0–CP7 in [`CLAUDE.md`](CLAUDE.md)) — and only then does it run the full pipeline on its own, with the cost stated and approved.
+The agent runs it as a **pilot first, autonomy second**: it will tell you up front that a small batch runs together with you — you approve the harvest sample, the gate criteria, and the pilot verdicts at fixed checkpoints (CP0–CP7 in [`CLAUDE.md`](CLAUDE.md)). The lock condition before any full run: **two consecutive rounds of 10 finished records that you accept in full** as titles you would actually message — one correction resets the streak, and the second round must be new rows. Only then does the agent run the full audience on its own, with the cost stated and approved.
 
 ## The stack it targets
 

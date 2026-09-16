@@ -56,13 +56,21 @@ Do not merge checkpoints, and do not proceed past one without its yes.
   the rejects. User approves or tunes the criteria (tuning = redo CP4).
 - **CP5 — Title-gate pilot approved.** Same, on the pilot survivors: every
   verdict, both directions. User approves or tunes.
-- **CP6 — First leads approved.** Show the pilot's finished leads —
-  name, title, months, company, profile URL, email if enriched — and ask
-  the question that matters: "Would you actually reach out to these?" A no
-  here means tuning, not proceeding.
-- **CP7 — Full run authorized.** State the full-run numbers: total rows,
-  LLM calls, estimated cost, expected runtime. Get an explicit yes, then
-  run the whole pipeline autonomously, saving incrementally.
+- **CP6 — Two clean rounds of ten.** The lock condition, and it is strict:
+  1. Produce 10 finished records (name, title, months, change type,
+     company, profile URL) and ask: "Are these valid titles you would
+     actually message?"
+  2. Any correction — even one record — means tune the criteria and the
+     streak resets to zero.
+  3. On a fully accepted round, produce 10 NEW records (the next slice,
+     never the same rows) and ask again.
+  4. Only two consecutive fully-accepted rounds of 10 unlock CP7. One
+     approved batch is never enough — a judge that got lucky once has not
+     been validated.
+- **CP7 — Full run authorized.** Reached only through CP6's two clean
+  rounds. State the full-run numbers: total rows, LLM calls, estimated
+  cost, expected runtime. Get an explicit yes, then run the whole pipeline
+  autonomously, saving incrementally.
 
 After the full run, report the funnel: counts surviving every stage. A gate
 that killed ~everything or ~nothing is a tuning conversation, not a result —
